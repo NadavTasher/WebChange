@@ -1,4 +1,4 @@
-package nadav.tasher.webchange;
+package nadav.tasher.webchange.activities;
 
 import android.app.Activity;
 import android.os.Bundle;
