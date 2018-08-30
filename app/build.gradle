@@ -4,7 +4,7 @@ android {
     compileSdkVersion 28
     defaultConfig {
         applicationId "nadav.tasher.webchange"
-        minSdkVersion 21
+        minSdkVersion 23
         targetSdkVersion 28
         versionCode 0
         versionName "0.0"

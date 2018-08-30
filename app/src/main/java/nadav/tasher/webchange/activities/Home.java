@@ -36,6 +36,7 @@ import nadav.tasher.lightool.graphics.views.appview.navigation.corner.Corner;
 import nadav.tasher.lightool.info.Device;
 import nadav.tasher.webchange.R;
 import nadav.tasher.webchange.architecture.Site;
+import nadav.tasher.webchange.services.Refresh;
 
 public class Home extends Activity {
 
@@ -77,7 +78,7 @@ public class Home extends Activity {
         }
     }
 
-    public static String getHashForFile(File file) {
+    public static String getSumForFile(File file) {
         try {
             return new String(Hex.encodeHex(DigestUtils.md5(new FileInputStream(file))));
         } catch (IOException e) {
@@ -87,7 +88,7 @@ public class Home extends Activity {
     }
 
     public static boolean check(Site site, File temp) {
-        return !site.getSum().equals(getHashForFile(temp));
+        return !site.getSum().equals(getSumForFile(temp));
     }
 
     public static File getTempFile(Context context) {
@@ -103,6 +104,7 @@ public class Home extends Activity {
     private void init() {
         sp = getSharedPreferences(prefName, MODE_PRIVATE);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        Refresh.reschedule(getApplicationContext());
         mAppView = new AppView(this);
         mAppView.setDrawNavigation(false);
         mAppView.setBackgroundColor(new AppView.Gradient(topColor, bottomColor));
@@ -166,7 +168,7 @@ public class Home extends Activity {
                         site.getDownload(getTempFile(getApplicationContext()), new Download.Callback() {
                             @Override
                             public void onSuccess(File file) {
-                                site.setSum(getHashForFile(file));
+                                site.setSum(getSumForFile(file));
                                 saveSite(getApplicationContext(), site);
                                 loadSites();
                             }
@@ -308,7 +310,7 @@ public class Home extends Activity {
                     site.getDownload(getTempFile(getApplicationContext()), new Download.Callback() {
                         @Override
                         public void onSuccess(File file) {
-                            site.setSum(getHashForFile(file));
+                            site.setSum(getSumForFile(file));
                             saveSite(getApplicationContext(), site);
                             sum.setText(site.getSum());
                         }
