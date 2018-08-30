@@ -17,7 +17,7 @@ public class Center {
 
     public static final String prefName = "prefs", sitesPref = "sites", tldPattern = "(\\..+)", unprotocolPattern = "^([a-z]+)://", protocolPattern = "^([a-z]+)://";
 
-    public static final int topColor = 0xFF92bbfc, bottomColor = 0xFFfc9835, uiColor = 0xFF72e0b0, uifColor = 0xFF992244, textColor = 0xFF000000;
+    public static final int topColor = 0xFF92bbfc, bottomColor = 0xFF457761, uiColor = 0xFF774468, uifColor = 0xFF992244, textColor = 0xFFFFFFFF;
 
     public static void saveSite(Context c, Site site) {
         SharedPreferences sp = c.getSharedPreferences(prefName, Context.MODE_PRIVATE);
