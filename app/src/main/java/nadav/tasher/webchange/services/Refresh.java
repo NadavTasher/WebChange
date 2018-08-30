@@ -27,6 +27,7 @@ import nadav.tasher.lightool.info.Device;
 import nadav.tasher.webchange.R;
 import nadav.tasher.webchange.architecture.Site;
 
+import static nadav.tasher.lightool.info.Device.isOnline;
 import static nadav.tasher.webchange.activities.Home.check;
 import static nadav.tasher.webchange.activities.Home.getSumForFile;
 import static nadav.tasher.webchange.activities.Home.getTempFile;
@@ -37,8 +38,6 @@ public class Refresh extends JobService {
 
     private static final int ID = 102;
     private SharedPreferences sp;
-    private int i;
-    private boolean isRunning = false;
 
     public static void reschedule(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -46,6 +45,8 @@ public class Refresh extends JobService {
                 ComponentName serviceComponent = new ComponentName(context, Refresh.class);
                 JobInfo.Builder builder = new JobInfo.Builder(ID, serviceComponent);
                 builder.setMinimumLatency(context.getResources().getInteger(R.integer.background_loop_time));
+                builder.setRequiresDeviceIdle(false);
+                builder.setOverrideDeadline(context.getResources().getInteger(R.integer.background_loop_time));
                 JobScheduler jobScheduler = context.getSystemService(JobScheduler.class);
                 if (jobScheduler != null) {
                     jobScheduler.schedule(builder.build());
@@ -64,10 +65,11 @@ public class Refresh extends JobService {
         sp = getSharedPreferences(prefName, MODE_PRIVATE);
         try {
             JSONArray siteArray = new JSONArray(sp.getString(sitesPref, new JSONArray().toString()));
-            for (i = 0; i < siteArray.length(); ) {
+            for (int i = 0; i < siteArray.length(); i++) {
                 JSONObject currentSite = siteArray.getJSONObject(i);
                 final Site mSite = Site.fromJSON(currentSite);
-                if (!isRunning) {
+                if (isOnline(getApplicationContext())) {
+
                     mSite.getDownload(getTempFile(getApplicationContext()), new Download.Callback() {
                         @Override
                         public void onSuccess(File file) {
@@ -75,18 +77,16 @@ public class Refresh extends JobService {
                                 mSite.setSum(getSumForFile(file));
                                 inform(mSite.getUrl().replaceAll("(^([a-z]+)://)|(/.+)|(/)", "").toLowerCase() + " changed!", "Tap to open", mSite.getUrl());
                             }
-                            isRunning = false;
-                            i++;
+                            reschedule(getApplicationContext());
                         }
 
                         @Override
                         public void onFailure(Exception e) {
-                            isRunning = false;
-                            i++;
+                            reschedule(getApplicationContext());
                         }
                     }).execute();
-                    isRunning = true;
                 }
+
             }
         } catch (JSONException e) {
             e.printStackTrace();

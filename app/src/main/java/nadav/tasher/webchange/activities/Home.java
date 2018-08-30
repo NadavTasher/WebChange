@@ -38,6 +38,8 @@ import nadav.tasher.webchange.R;
 import nadav.tasher.webchange.architecture.Site;
 import nadav.tasher.webchange.services.Refresh;
 
+import static nadav.tasher.lightool.info.Device.isOnline;
+
 public class Home extends Activity {
 
     public static final String prefName = "prefs", sitesPref = "sites";
@@ -160,24 +162,26 @@ public class Home extends Activity {
             @Override
             public void onClick(View view) {
                 if (!url.getText().toString().isEmpty()) {
-                    if (Pattern.compile("(\\.[a-z]+)$").matcher(url.getText().toString()).find()) {
+                    if (Pattern.compile("(\\.[a-z]+(/.+)|(/))$").matcher(url.getText().toString()).find()) {
                         url.setError(null);
                         mAppView.getDrawer().close();
                         final Site site = Site.createNew(protocolify(url.getText().toString()));
                         saveSite(getApplicationContext(), site);
-                        site.getDownload(getTempFile(getApplicationContext()), new Download.Callback() {
-                            @Override
-                            public void onSuccess(File file) {
-                                site.setSum(getSumForFile(file));
-                                saveSite(getApplicationContext(), site);
-                                loadSites();
-                            }
+                        if (isOnline(getApplicationContext())) {
+                            site.getDownload(getTempFile(getApplicationContext()), new Download.Callback() {
+                                @Override
+                                public void onSuccess(File file) {
+                                    site.setSum(getSumForFile(file));
+                                    saveSite(getApplicationContext(), site);
+                                    loadSites();
+                                }
 
-                            @Override
-                            public void onFailure(Exception e) {
+                                @Override
+                                public void onFailure(Exception e) {
 
-                            }
-                        }).execute();
+                                }
+                            }).execute();
+                        }
                         loadSites();
                     } else {
                         url.setError("A URL Must End With A TLD");
@@ -284,7 +288,7 @@ public class Home extends Activity {
                 public void onClick(View view) {
                     if (url.getVisibility() == View.GONE) {
                         if (!urlEditor.getText().toString().isEmpty()) {
-                            if (Pattern.compile("(\\.[a-z]+)$").matcher(urlEditor.getText().toString()).find()) {
+                            if (Pattern.compile("(\\.[a-z]+(/.+)|(/))$").matcher(urlEditor.getText().toString()).find()) {
                                 url.setVisibility(View.VISIBLE);
                                 urlEditor.setVisibility(View.GONE);
                                 edit.setImageDrawable(getDrawable(R.drawable.ic_edit));
@@ -307,19 +311,22 @@ public class Home extends Activity {
             refresh.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    site.getDownload(getTempFile(getApplicationContext()), new Download.Callback() {
-                        @Override
-                        public void onSuccess(File file) {
-                            site.setSum(getSumForFile(file));
-                            saveSite(getApplicationContext(), site);
-                            sum.setText(site.getSum());
-                        }
+                    if (isOnline(getContext())) {
 
-                        @Override
-                        public void onFailure(Exception e) {
+                        site.getDownload(getTempFile(getApplicationContext()), new Download.Callback() {
+                            @Override
+                            public void onSuccess(File file) {
+                                site.setSum(getSumForFile(file));
+                                saveSite(getApplicationContext(), site);
+                                sum.setText(site.getSum());
+                            }
 
-                        }
-                    }).execute();
+                            @Override
+                            public void onFailure(Exception e) {
+
+                            }
+                        }).execute();
+                    }
                 }
             });
             remove.setOnClickListener(new OnClickListener() {
