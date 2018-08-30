@@ -23,4 +23,5 @@ dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation project(':lightool-release')
     implementation 'com.squareup.okhttp3:okhttp:3.11.0'
+    implementation files('libs/commons-codec-1.11.jar')
 }
