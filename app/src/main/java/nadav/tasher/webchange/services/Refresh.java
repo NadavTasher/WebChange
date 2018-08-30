@@ -28,11 +28,11 @@ import nadav.tasher.webchange.R;
 import nadav.tasher.webchange.architecture.Site;
 
 import static nadav.tasher.lightool.info.Device.isOnline;
-import static nadav.tasher.webchange.activities.Home.check;
-import static nadav.tasher.webchange.activities.Home.getSumForFile;
-import static nadav.tasher.webchange.activities.Home.getTempFile;
-import static nadav.tasher.webchange.activities.Home.prefName;
-import static nadav.tasher.webchange.activities.Home.sitesPref;
+import static nadav.tasher.webchange.architecture.Center.check;
+import static nadav.tasher.webchange.architecture.Center.getTempFile;
+import static nadav.tasher.webchange.architecture.Center.md5;
+import static nadav.tasher.webchange.architecture.Center.prefName;
+import static nadav.tasher.webchange.architecture.Center.sitesPref;
 
 public class Refresh extends JobService {
 
@@ -74,7 +74,7 @@ public class Refresh extends JobService {
                         @Override
                         public void onSuccess(File file) {
                             if (check(mSite, file)) {
-                                mSite.setSum(getSumForFile(file));
+                                mSite.setSum(md5(file));
                                 inform(mSite.getUrl().replaceAll("(^([a-z]+)://)|(/.+)|(/)", "").toLowerCase() + " changed!", "Tap to open", mSite.getUrl());
                             }
                             reschedule(getApplicationContext());

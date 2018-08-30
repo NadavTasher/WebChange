@@ -17,15 +17,11 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import org.apache.commons.codec.binary.Hex;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.util.regex.Pattern;
 
 import nadav.tasher.lightool.communication.network.Download;
@@ -39,63 +35,27 @@ import nadav.tasher.webchange.architecture.Site;
 import nadav.tasher.webchange.services.Refresh;
 
 import static nadav.tasher.lightool.info.Device.isOnline;
+import static nadav.tasher.webchange.architecture.Center.bottomColor;
+import static nadav.tasher.webchange.architecture.Center.getTempFile;
+import static nadav.tasher.webchange.architecture.Center.md5;
+import static nadav.tasher.webchange.architecture.Center.prefName;
+import static nadav.tasher.webchange.architecture.Center.protocolPattern;
+import static nadav.tasher.webchange.architecture.Center.removeSite;
+import static nadav.tasher.webchange.architecture.Center.saveSite;
+import static nadav.tasher.webchange.architecture.Center.sitesPref;
+import static nadav.tasher.webchange.architecture.Center.textColor;
+import static nadav.tasher.webchange.architecture.Center.tldPattern;
+import static nadav.tasher.webchange.architecture.Center.topColor;
+import static nadav.tasher.webchange.architecture.Center.uiColor;
+import static nadav.tasher.webchange.architecture.Center.uifColor;
+import static nadav.tasher.webchange.architecture.Center.unprotocolPattern;
 
 public class Home extends Activity {
 
-    public static final String prefName = "prefs", sitesPref = "sites";
-    private final int topColor = 0xFFAB45C9, bottomColor = 0x000000, uiColor = 0xFF123456;
+
     private AppView mAppView;
     private SharedPreferences sp;
 
-    public static void saveSite(Context c, Site site) {
-        SharedPreferences sp = c.getSharedPreferences(prefName, MODE_PRIVATE);
-        try {
-            JSONArray jsonArray = new JSONArray(sp.getString(sitesPref, new JSONArray().toString()));
-            boolean found = false;
-            for (int i = 0; i < jsonArray.length() && !found; i++) {
-                if (Site.fromJSON(jsonArray.getJSONObject(i)).getId().equals(site.getId())) {
-                    jsonArray.put(i, site.toJSON());
-                    found = true;
-                }
-            }
-            if (!found) jsonArray.put(site.toJSON());
-            sp.edit().putString(sitesPref, jsonArray.toString()).apply();
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public static void removeSite(Context c, Site site) {
-        SharedPreferences sp = c.getSharedPreferences(prefName, MODE_PRIVATE);
-        try {
-            JSONArray jsonArray = new JSONArray(sp.getString(sitesPref, new JSONArray().toString()));
-            for (int i = 0; i < jsonArray.length(); i++) {
-                if (Site.fromJSON(jsonArray.getJSONObject(i)).getId().equals(site.getId())) {
-                    jsonArray.remove(i);
-                }
-            }
-            sp.edit().putString(sitesPref, jsonArray.toString()).apply();
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public static String getSumForFile(File file) {
-        try {
-            return new String(Hex.encodeHex(DigestUtils.md5(new FileInputStream(file))));
-        } catch (IOException e) {
-            e.printStackTrace();
-            return "";
-        }
-    }
-
-    public static boolean check(Site site, File temp) {
-        return !site.getSum().equals(getSumForFile(temp));
-    }
-
-    public static File getTempFile(Context context) {
-        return new File(context.getFilesDir(), "temp");
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -110,7 +70,7 @@ public class Home extends Activity {
         mAppView = new AppView(this);
         mAppView.setDrawNavigation(false);
         mAppView.setBackgroundColor(new AppView.Gradient(topColor, bottomColor));
-        mAppView.getDrawer().getDrawerView().setBackground(Utils.getCoaster(Color.GRAY, 32, 20));
+        mAppView.getDrawer().getDrawerView().setBackground(Utils.getCoaster(uiColor, 32, 20));
         mAppView.getDrawer().getDrawerView().setPadding(20, 20, 20, 20);
         Corner createCorner = new Corner(getApplicationContext(), Device.screenX(getApplicationContext()) / 4, uiColor);
         createCorner.setColorAlpha(255);
@@ -150,11 +110,14 @@ public class Home extends Activity {
         urlFrame.setPadding(20, 20, 20, 20);
         final EditText url = new EditText(getApplicationContext());
         Button generate = new Button(getApplicationContext());
-        url.setHint("Site URL e.g. http://nockio.com");
+        url.setHint("URL");
+        url.setTextColor(textColor);
+        url.setHintTextColor(Color.LTGRAY);
         url.setSingleLine();
-        generate.setText("Add");
+        generate.setText(R.string.add);
         generate.setAllCaps(false);
-        generate.setBackground(Utils.getCoaster(Color.LTGRAY, 16, 10));
+        generate.setTextColor(textColor);
+        generate.setBackground(Utils.getCoaster(uifColor, 16, 10));
         urlFrame.addView(url);
         dialog.addView(urlFrame);
         dialog.addView(generate);
@@ -162,7 +125,7 @@ public class Home extends Activity {
             @Override
             public void onClick(View view) {
                 if (!url.getText().toString().isEmpty()) {
-                    if (Pattern.compile("(\\.[a-z]+(/.+)|(/))$").matcher(url.getText().toString()).find()) {
+                    if (Pattern.compile(tldPattern).matcher(url.getText().toString()).find()) {
                         url.setError(null);
                         mAppView.getDrawer().close();
                         final Site site = Site.createNew(protocolify(url.getText().toString()));
@@ -171,7 +134,7 @@ public class Home extends Activity {
                             site.getDownload(getTempFile(getApplicationContext()), new Download.Callback() {
                                 @Override
                                 public void onSuccess(File file) {
-                                    site.setSum(getSumForFile(file));
+                                    site.setSum(md5(file));
                                     saveSite(getApplicationContext(), site);
                                     loadSites();
                                 }
@@ -213,7 +176,7 @@ public class Home extends Activity {
 
     private String protocolify(String url) {
 
-        if (!Pattern.compile("^([a-z]+)://").matcher(url).find()) {
+        if (!Pattern.compile(protocolPattern).matcher(url).find()) {
             return "http://" + url;
         }
         return url;
@@ -230,15 +193,21 @@ public class Home extends Activity {
         }
 
         private String unprotocolify(String url) {
-            return url.replaceAll("^([a-z]+)://", "");
+            return url.replaceAll(unprotocolPattern, "");
         }
 
         private ImageView getImageView(int resource) {
             ImageView imageView = new ImageView(getContext());
             imageView.setImageDrawable(getDrawable(resource));
             int size = Device.screenX(getContext()) / 8;
-            imageView.setLayoutParams(new LinearLayout.LayoutParams(size, size));
+            imageView.setLayoutParams(new LinearLayout.LayoutParams(size, size, 1));
             return imageView;
+        }
+
+        private View generateSized() {
+            View v = new View(getContext());
+            v.setLayoutParams(new LinearLayout.LayoutParams(0, 0, 2));
+            return v;
         }
 
         private void init() {
@@ -254,20 +223,20 @@ public class Home extends Activity {
             urlEditor.setTextSize(34);
             urlEditor.setGravity(Gravity.CENTER);
             urlEditor.setSingleLine();
-            urlEditor.setTextColor(Color.WHITE);
+            urlEditor.setTextColor(textColor);
             final TextView sum = new TextView(getContext());
             url.setText(unprotocolify(site.getUrl()));
             url.setTextSize(34);
             url.setGravity(Gravity.CENTER);
             url.setSingleLine();
             url.setEllipsize(TextUtils.TruncateAt.END);
-            url.setTextColor(Color.WHITE);
+            url.setTextColor(textColor);
             sum.setText(site.getSum());
             sum.setTextSize(20);
             sum.setGravity(Gravity.CENTER);
             sum.setSingleLine();
             sum.setEllipsize(TextUtils.TruncateAt.END);
-            sum.setTextColor(Color.WHITE);
+            sum.setTextColor(textColor);
             urlHolder.addView(url);
             urlEditor.setVisibility(View.GONE);
             urlHolder.addView(urlEditor);
@@ -280,15 +249,17 @@ public class Home extends Activity {
             ImageView remove = getImageView(nadav.tasher.lightool.R.drawable.ic_delete);
             ImageView refresh = getImageView(R.drawable.ic_refresh);
             final ImageView edit = getImageView(R.drawable.ic_edit);
+            bottom.addView(generateSized());
             bottom.addView(edit);
             bottom.addView(refresh);
             bottom.addView(remove);
+            bottom.addView(generateSized());
             edit.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View view) {
                     if (url.getVisibility() == View.GONE) {
                         if (!urlEditor.getText().toString().isEmpty()) {
-                            if (Pattern.compile("(\\.[a-z]+(/.+)|(/))$").matcher(urlEditor.getText().toString()).find()) {
+                            if (Pattern.compile(tldPattern).matcher(urlEditor.getText().toString()).find()) {
                                 url.setVisibility(View.VISIBLE);
                                 urlEditor.setVisibility(View.GONE);
                                 edit.setImageDrawable(getDrawable(R.drawable.ic_edit));
@@ -316,7 +287,7 @@ public class Home extends Activity {
                         site.getDownload(getTempFile(getApplicationContext()), new Download.Callback() {
                             @Override
                             public void onSuccess(File file) {
-                                site.setSum(getSumForFile(file));
+                                site.setSum(md5(file));
                                 saveSite(getApplicationContext(), site);
                                 sum.setText(site.getSum());
                             }
@@ -336,8 +307,10 @@ public class Home extends Activity {
                     setVisibility(View.GONE);
                 }
             });
-            ExpandingView expand = new ExpandingView(getContext(), Utils.getCoaster(0xFF884444, 20, 10), 500, (int) ((double) Device.screenY(getContext()) / 6.5), top, bottom);
-            expand.setPadding(20, 20, 20, 20);
+            top.measure(MeasureSpec.UNSPECIFIED, MeasureSpec.UNSPECIFIED);
+//            Utils.measure(top);
+            ExpandingView expand = new ExpandingView(getContext(), Utils.getCoaster(uifColor, 20, 10), 500, top.getMeasuredHeight() + 40, top, bottom);
+            expand.setPadding(20, 20, 20, 40);
             addView(expand);
         }
 
