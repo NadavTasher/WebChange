@@ -71,7 +71,6 @@ public class Home extends Activity {
                     jsonArray.remove(i);
                 }
             }
-            jsonArray.put(site.toJSON());
             sp.edit().putString(sitesPref, jsonArray.toString()).apply();
         } catch (JSONException e) {
             e.printStackTrace();
@@ -232,7 +231,7 @@ public class Home extends Activity {
             ImageView imageView = new ImageView(getContext());
             imageView.setImageDrawable(getDrawable(resource));
             int size = Device.screenX(getContext()) / 8;
-            imageView.setLayoutParams(new LinearLayout.LayoutParams(size, size, 1));
+            imageView.setLayoutParams(new LinearLayout.LayoutParams(size, size));
             return imageView;
         }
 
@@ -241,7 +240,15 @@ public class Home extends Activity {
             top.setOrientation(LinearLayout.VERTICAL);
             top.setGravity(Gravity.CENTER);
             top.setLayoutParams(new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            TextView url = new TextView(getContext());
+            FrameLayout urlHolder = new FrameLayout(getContext());
+            final TextView url = new TextView(getContext());
+            final EditText urlEditor = new EditText(getContext());
+            urlEditor.setText(site.getUrl());
+            urlEditor.setHint("URL");
+            urlEditor.setTextSize(34);
+            urlEditor.setGravity(Gravity.CENTER);
+            urlEditor.setSingleLine();
+            urlEditor.setTextColor(Color.WHITE);
             final TextView sum = new TextView(getContext());
             url.setText(unprotocolify(site.getUrl()));
             url.setTextSize(34);
@@ -255,8 +262,10 @@ public class Home extends Activity {
             sum.setSingleLine();
             sum.setEllipsize(TextUtils.TruncateAt.END);
             sum.setTextColor(Color.WHITE);
-
-            top.addView(url);
+            urlHolder.addView(url);
+            urlEditor.setVisibility(View.GONE);
+            urlHolder.addView(urlEditor);
+            top.addView(urlHolder);
             top.addView(sum);
             LinearLayout bottom = new LinearLayout(getContext());
             bottom.setOrientation(LinearLayout.HORIZONTAL);
@@ -264,14 +273,33 @@ public class Home extends Activity {
             bottom.setLayoutParams(new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             ImageView remove = getImageView(nadav.tasher.lightool.R.drawable.ic_delete);
             ImageView refresh = getImageView(R.drawable.ic_refresh);
-            ImageView edit = getImageView(R.drawable.ic_edit);
+            final ImageView edit = getImageView(R.drawable.ic_edit);
             bottom.addView(edit);
             bottom.addView(refresh);
             bottom.addView(remove);
             edit.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View view) {
-
+                    if (url.getVisibility() == View.GONE) {
+                        if (!urlEditor.getText().toString().isEmpty()) {
+                            if (Pattern.compile("(\\.[a-z]+)$").matcher(urlEditor.getText().toString()).find()) {
+                                url.setVisibility(View.VISIBLE);
+                                urlEditor.setVisibility(View.GONE);
+                                edit.setImageDrawable(getDrawable(R.drawable.ic_edit));
+                                url.setText(unprotocolify(urlEditor.getText().toString()));
+                                site.setUrl(protocolify(urlEditor.getText().toString()));
+                                saveSite(getContext(), site);
+                            } else {
+                                urlEditor.setError("A URL Must End With A TLD");
+                            }
+                        } else {
+                            urlEditor.setError("A URL Can't Be Empty");
+                        }
+                    } else {
+                        urlEditor.setVisibility(View.VISIBLE);
+                        url.setVisibility(View.GONE);
+                        edit.setImageDrawable(getDrawable(R.drawable.ic_save));
+                    }
                 }
             });
             refresh.setOnClickListener(new OnClickListener() {
