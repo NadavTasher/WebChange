@@ -36,6 +36,7 @@ public class Refresh extends Service {
 
     private static final int ID = 102;
     private SharedPreferences sp;
+    private int i;
 
     public static void reschedule(Context context) {
         Calendar cal = Calendar.getInstance();
@@ -70,8 +71,8 @@ public class Refresh extends Service {
     private void startRefresh() {
         sp = getSharedPreferences(prefName, MODE_PRIVATE);
         try {
-            JSONArray siteArray = new JSONArray(sp.getString(sitesPref, new JSONArray().toString()));
-            for (int i = 0; i < siteArray.length(); i++) {
+            final JSONArray siteArray = new JSONArray(sp.getString(sitesPref, new JSONArray().toString()));
+            for (i = 0; i < siteArray.length(); i++) {
                 JSONObject currentSite = siteArray.getJSONObject(i);
                 final Site mSite = Site.fromJSON(currentSite);
                 if (isOnline(getApplicationContext())) {
@@ -83,12 +84,12 @@ public class Refresh extends Service {
                                 mSite.setSum(md5(file));
                                 inform(mSite.getUrl().replaceAll("(^([a-z]+)://)|(/.+)|(/)", "").toLowerCase() + " changed!", "Tap to open", mSite.getUrl());
                             }
-                            reschedule(getApplicationContext());
+                            if (i >= siteArray.length()) stopSelf();
                         }
 
                         @Override
                         public void onFailure(Exception e) {
-                            reschedule(getApplicationContext());
+                            if (i >= siteArray.length()) stopSelf();
                         }
                     }).execute();
                 }
@@ -97,7 +98,6 @@ public class Refresh extends Service {
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        stopSelf();
 //        reschedule(getApplicationContext());
     }
 
