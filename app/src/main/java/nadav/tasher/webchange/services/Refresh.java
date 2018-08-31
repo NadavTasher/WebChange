@@ -1,29 +1,27 @@
 package nadav.tasher.webchange.services;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.job.JobInfo;
-import android.app.job.JobParameters;
-import android.app.job.JobScheduler;
-import android.app.job.JobService;
-import android.content.ComponentName;
+import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
+import android.os.IBinder;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.util.Calendar;
 import java.util.Random;
 
 import nadav.tasher.lightool.communication.network.Download;
-import nadav.tasher.lightool.info.Device;
 import nadav.tasher.webchange.R;
 import nadav.tasher.webchange.architecture.Site;
 
@@ -34,34 +32,42 @@ import static nadav.tasher.webchange.architecture.Center.md5;
 import static nadav.tasher.webchange.architecture.Center.prefName;
 import static nadav.tasher.webchange.architecture.Center.sitesPref;
 
-public class Refresh extends JobService {
+public class Refresh extends Service {
 
     private static final int ID = 102;
     private SharedPreferences sp;
 
     public static void reschedule(Context context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!Device.isJobServiceScheduled(context, ID)) {
-                ComponentName serviceComponent = new ComponentName(context, Refresh.class);
-                JobInfo.Builder builder = new JobInfo.Builder(ID, serviceComponent);
-                builder.setMinimumLatency(context.getResources().getInteger(R.integer.background_loop_time));
-                builder.setRequiresDeviceIdle(false);
-                builder.setOverrideDeadline(context.getResources().getInteger(R.integer.background_loop_time));
-                JobScheduler jobScheduler = context.getSystemService(JobScheduler.class);
-                if (jobScheduler != null) {
-                    jobScheduler.schedule(builder.build());
-                }
-            }
+        Calendar cal = Calendar.getInstance();
+        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        Intent serviceIntent = new Intent(context, Refresh.class);
+        PendingIntent servicePendingIntent =
+                PendingIntent.getService(context,
+                        ID,
+                        serviceIntent,
+                        PendingIntent.FLAG_CANCEL_CURRENT);
+        if (am != null) {
+            am.setRepeating(
+                    AlarmManager.RTC_WAKEUP,
+                    cal.getTimeInMillis(),
+                    context.getResources().getInteger(R.integer.background_loop_time),
+                    servicePendingIntent
+            );
         }
     }
 
     @Override
-    public boolean onStartJob(JobParameters jobParameters) {
-        startRefresh(jobParameters);
-        return false;
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        startRefresh();
+        return START_REDELIVER_INTENT;
     }
 
-    private void startRefresh(JobParameters jobParameters) {
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+    private void startRefresh() {
         sp = getSharedPreferences(prefName, MODE_PRIVATE);
         try {
             JSONArray siteArray = new JSONArray(sp.getString(sitesPref, new JSONArray().toString()));
@@ -91,8 +97,8 @@ public class Refresh extends JobService {
         } catch (JSONException e) {
             e.printStackTrace();
         }
-        jobFinished(jobParameters, false);
-        reschedule(getApplicationContext());
+        stopSelf();
+//        reschedule(getApplicationContext());
     }
 
     private void inform(String title, String message, String url) {
@@ -119,10 +125,5 @@ public class Refresh extends JobService {
             }
             mManager.notify(getString(R.string.app_name), new Random().nextInt(1000), mBuilder.build());
         }
-    }
-
-    @Override
-    public boolean onStopJob(JobParameters jobParameters) {
-        return false;
     }
 }
